@@ -11,9 +11,10 @@ optionExpirationDate = input("Enter the call option expiration date (YYYY-MM-DD)
 
 tradingDays = trading_calendar.GetNumberOfTradingDaysUntilExpiration(optionExpirationDate)
 currentPrice = api_params.GetCurrentPrice(symbol)
-historicalData = api_params.GetHistoricalData(symbol)
-volatility, percentUp = volatility_calculator.GetVolatilityMetrics(historicalData)
 riskFreeRate = risk_free_rate.GetRiskFreeRate()
+historicalData = api_params.GetHistoricalData(symbol)
+volatility, percentUp = volatility_calculator.GetVolatilityMetrics(historicalData,riskFreeRate,tradingDays)
+
 
 modeledOptionValue = binomial_tree_model.BinomialTreeOptionValuationModel(tradingDays,currentPrice,volatility,percentUp,optionStrikePrice,riskFreeRate)
 print(f"The modeled value of {symbol} ${optionStrikePrice} calls expiring {optionExpirationDate} is ${modeledOptionValue}")
