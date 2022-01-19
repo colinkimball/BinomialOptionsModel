@@ -1,41 +1,42 @@
 import pandas as pd
 import numpy as np
 import math
+import sys
 
-def GetYangZhangVolatility(price_data, window, trading_periods, clean):
+def GetYangZhangVolatility(price_data):
 
-    log_ho = (price_data['high'] / price_data['open']).apply(np.log)
-    log_lo = (price_data['low'] / price_data['open']).apply(np.log)
-    log_co = (price_data['close'] / price_data['open']).apply(np.log)
+    #we will use a 5 trading day (1 standard week) window to calculate the rolling volatility over time
+    window = 5
+    #trading periods is set to a default of 252 since that is the standard number of trading days in a year
+    trading_periods = 252
+    #get natural log of each fluctuation combination of OHLC - using natural log to make fluctuations more normally distributed
+    log_high_open = (price_data['high'] / price_data['open']).apply(np.log)
+    log_low_open = (price_data['low'] / price_data['open']).apply(np.log)
+    log_close_open = (price_data['close'] / price_data['open']).apply(np.log)
     
-    log_oc = (price_data['open'] / price_data['close'].shift(1)).apply(np.log)
-    log_oc_sq = log_oc**2
+    #for open-close, analyze the 'overnight' fluctuation between the open and the previous close
+    log_open_close_squared = (price_data['open'] / price_data['close'].shift(1)).apply(np.log)**2
     
-    log_cc = (price_data['close'] / price_data['close'].shift(1)).apply(np.log)
-    log_cc_sq = log_cc**2
+    #for close-close, compare the current close to the prior close to account for overnight shift plus day's activity
+    log_close_close_squared = (price_data['close'] / price_data['close'].shift(1)).apply(np.log)**2
     
-    rs = log_ho * (log_ho - log_co) + log_lo * (log_lo - log_co)
+    rs = log_high_open * (log_high_open - log_close_open) + log_low_open * (log_low_open - log_close_open)
     
-    close_vol = log_cc_sq.rolling(
-        window=window,
-        center=False
+    close_vol = log_close_close_squared.rolling(
+        window=window
     ).sum() * (1.0 / (window - 1.0))
-    open_vol = log_oc_sq.rolling(
-        window=window,
-        center=False
+    open_vol = log_open_close_squared.rolling(
+        window=window
     ).sum() * (1.0 / (window - 1.0))
     window_rs = rs.rolling(
-        window=window,
-        center=False
+        window=window
     ).sum() * (1.0 / (window - 1.0))
 
     k = 0.34 / (1.34 + (window + 1) / (window - 1))
     result = (open_vol + k * close_vol + (1 - k) * window_rs).apply(np.sqrt) * math.sqrt(trading_periods)
+
+    return result.dropna()
     
-    if clean:
-        return result.dropna()
-    else:
-        return result
 
 
 def CreateHistoricalOHLCDataframe(historicalData):
@@ -61,7 +62,7 @@ def CreateHistoricalOHLCDataframe(historicalData):
 
     return dataframe
 
-def GetVolatilityMetrics(historicalData,riskFreeRate,tradingDays):
+def GetVolatilityMetrics(historicalData,riskFreeRate):
     selectionNumber = input("""
     Choose your volatility calculation methodology:
     1. Yang-Zhang formula - based on Open-High-Low-Close historical price data
@@ -70,9 +71,8 @@ def GetVolatilityMetrics(historicalData,riskFreeRate,tradingDays):
     """)
     historicalPriceData = CreateHistoricalOHLCDataframe(historicalData)
     if selectionNumber == "1":
-
-        volatilityNpArray = GetYangZhangVolatility(historicalPriceData,tradingDays,len(historicalPriceData),True)
-        dailyVolatility = volatilityNpArray.mean()/len(volatilityNpArray)    
+        volatilityNpArray = GetYangZhangVolatility(historicalPriceData)
+        dailyVolatility = volatilityNpArray.mean()/252  
     # volatility of asset: propose using standard deviation of closing_percent_change
     elif selectionNumber == "2":
         impliedVolatility = float(input("Enter implied volatility: "))

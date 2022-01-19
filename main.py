@@ -13,7 +13,7 @@ tradingDays = trading_calendar.GetNumberOfTradingDaysUntilExpiration(optionExpir
 currentPrice = api_params.GetCurrentPrice(symbol)
 riskFreeRate = risk_free_rate.GetRiskFreeRate()
 historicalData = api_params.GetHistoricalData(symbol)
-volatility, percentUp = volatility_calculator.GetVolatilityMetrics(historicalData,riskFreeRate,tradingDays)
+volatility, percentUp = volatility_calculator.GetVolatilityMetrics(historicalData,riskFreeRate)
 
 
 modeledOptionValue = binomial_tree_model.BinomialTreeOptionValuationModel(tradingDays,currentPrice,volatility,percentUp,optionStrikePrice,riskFreeRate)
